@@ -120,22 +120,32 @@
 
   /* PRINT STYLES */
   @media print{
-    body{max-width:100%;padding:0;background:#fff;font-size:13px}
-    .tab-row,.report-wrap,.footer-row,.photo-drop,.photo-thumb-del,.toast{display:none!important}
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    body{max-width:100%;padding:0;background:#fff!important;font-size:13px}
+    .tab-row,.report-wrap,.footer-row,.photo-drop-trigger,.photo-thumb-del,.toast,.prog-pill,.ring-wrap{display:none!important}
+    /* Hide ALL checklists by default in print */
     .checklist{display:none!important}
-    .checklist.printing{display:block!important}
-    .header{padding:16px 16px 0}
-    .section{margin:0 16px 16px}
-    .date-strip{margin:0 16px 12px}
-    .photo-grid{page-break-inside:avoid}
+    /* Only show the one marked for printing */
+    .checklist.print-active{display:block!important}
+    .header{padding:12px 16px 0;margin-bottom:12px}
+    .header h1{font-size:20px}
+    .section{margin:0 16px 14px}
+    .date-strip{margin:0 16px 12px;padding:8px 12px}
+    .items-card{border:1px solid #ccc!important;border-radius:6px!important;break-inside:avoid}
+    .item{padding:9px 12px;break-inside:avoid}
+    .item-text{font-size:13px;color:#1a1a1a!important}
+    .item-tip{font-size:11px;color:#666!important}
+    .item.done .item-text{color:#aaa!important}
+    .cb{border:1.5px solid #999!important;background:#fff!important;border-radius:4px!important}
+    .item.done .cb{background:#1a7a58!important;border-color:#1a7a58!important}
+    .item.done .cb svg{opacity:1!important}
+    .sec-icon{background:#e8f5f0!important}
+    .photo-grid{grid-template-columns:repeat(4,1fr);page-break-inside:avoid}
     .photo-section{margin:0 16px 12px}
-    .items-card{border:1px solid #ccc;border-radius:8px}
-    .item{padding:8px 12px}
-    .item-text{font-size:13px}
-    .item-tip{font-size:11px}
-    .brand,.brand-addr,.header h1,.header-sub,.ring-wrap,.ring-label{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .acc{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .photo-grid{grid-template-columns:repeat(4,1fr)}
+    .photo-drop{border:none!important;padding:0!important;background:transparent!important}
+    .photo-drop p,.photo-drop small{display:none!important}
+    .photo-drop-icon{display:none!important}
+    .print-section-title{display:block!important}
   }
 
   @media(prefers-color-scheme:dark){
@@ -169,16 +179,16 @@
 </div>
 
 <div class="tab-row">
-  <button class="tab on" data-tab="cleaning">Cleaning</button>
+  <button class="tab on" data-tab="guidelines">Guidelines</button>
+  <button class="tab" data-tab="cleaning">Cleaning</button>
   <button class="tab" data-tab="prestay">Pre-Stay</button>
   <button class="tab" data-tab="poststay">Post-Stay</button>
-  <button class="tab" data-tab="guidelines">Guidelines</button>
 </div>
 
-<div id="cleaning" class="checklist on"></div>
+<div id="guidelines" class="checklist on"></div>
+<div id="cleaning" class="checklist"></div>
 <div id="prestay" class="checklist"></div>
 <div id="poststay" class="checklist"></div>
-<div id="guidelines" class="checklist"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -341,6 +351,7 @@ const D={
 const GUIDELINES=[
   'Use hosts\' cleaning supplies only: cleaning towels for light cleaning items, and paper towels for heavy, dirty items, such as the toilet and outdoor furniture. Indoor broom by the dryer; outdoor broom on the deck by the sliding door; chemicals in the laundry cabinet or under the kitchen sink. Mop next to the dryer and pads, cleaning towels, Q-tips, brushes, and gloves are located in the master bathroom closet.',
   'Use only the host\'s equipment: the vacuum in the master bedroom closet.',
+  'For security, four external cameras are installed around the property: two on the downstairs deck, one in the parking lot, and one on the left side of the house.',
 ];
 
 const S={};
@@ -456,10 +467,14 @@ function renderTab(tab){
   });
 
   h+=renderPhotoSection(tab);
-  h+=`<div class="report-wrap">
+  h+=`<div class="report-wrap" style="display:flex;flex-direction:column;gap:10px">
     <button class="report-btn" data-tab="${tab}">
       <svg viewBox="0 0 24 24">${mailSVG}</svg>
       Send Report To Host
+    </button>
+    <button class="print-btn" data-tab="${tab}" style="width:100%;padding:13px;border-radius:var(--radius);border:1.5px solid var(--border-strong);background:var(--surface);color:var(--text-2);font-family:var(--font);font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:all .18s">
+      <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print / Save As PDF
     </button>
   </div>
   <div class="footer-row">
@@ -520,6 +535,19 @@ function toggle(tab,s,i){
     else{row.classList.remove('done');row.setAttribute('aria-checked','false');}
   }
   updateTabProgress(tab);
+}
+
+function printTab(tab){
+  // Remove print-active from all tabs
+  document.querySelectorAll('.checklist').forEach(c=>c.classList.remove('print-active'));
+  // Mark this tab as the one to print
+  document.getElementById(tab).classList.add('print-active');
+  // Trigger browser print dialog
+  window.print();
+  // After printing (or cancel), restore print-active to only the visible tab
+  setTimeout(()=>{
+    document.querySelectorAll('.checklist').forEach(c=>c.classList.remove('print-active'));
+  },500);
 }
 
 function showToast(msg){
@@ -598,6 +626,9 @@ document.addEventListener('click',function(e){
   // Report button
   const rb=e.target.closest('.report-btn');
   if(rb){sendReport(rb.dataset.tab);return;}
+  // Print button
+  const pb=e.target.closest('.print-btn');
+  if(pb){printTab(pb.dataset.tab);return;}
   // Reset
   const rl=e.target.closest('[data-reset]');
   if(rl){
@@ -619,6 +650,8 @@ document.addEventListener('keydown',function(e){
 ['cleaning','prestay','poststay'].forEach(renderTab);
 renderGuidelines();
 updateGlobalRing();
+// Guidelines is the default open tab — ensure cleaning starts hidden
+document.getElementById('cleaning').classList.remove('on');
 </script>
 </body>
 </html>
